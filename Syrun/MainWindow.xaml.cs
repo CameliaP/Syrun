@@ -70,7 +70,7 @@ namespace Syrun
 		static bool IsMediaFile(string path)
 		{
 			var extension = Path.GetExtension(path);
-			return extension != null && -1 != Array.IndexOf(MediaExtensions, extension.ToUpperInvariant());
+			return extension != null && Array.IndexOf(MediaExtensions, extension.ToUpperInvariant()) != -1;
 		}
 
 		static IEnumerable<string> GetFiles(string path)
