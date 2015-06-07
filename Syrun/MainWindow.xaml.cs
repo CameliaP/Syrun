@@ -38,31 +38,70 @@ namespace Syrun
 
 		private void UIElement_OnDrop(object sender, DragEventArgs e)
 		{
-			var filepaths = new List<string>();
-			foreach (var s in (string[])e.Data.GetData(DataFormats.FileDrop, false))
+			var paths = ((string[])e.Data.GetData(DataFormats.FileDrop, false))
+				.SelectMany(GetFiles)
+				.Where(IsMediaFile)
+				.ToList();
+
+			PlayChoice(paths);
+		}
+
+		static void PlayChoice(IList<string> choices)
+		{
+			if (choices.Count.Equals(0))
+				return;
+			var pos = Rand.Next(choices.Count);
+			var item = choices.ElementAt(pos);
+
+			if (!ShouldPlay(item))
 			{
-				if (Directory.Exists(s))
-					filepaths.AddRange(Directory.GetFiles(s));
-				else
-					filepaths.Add(s);
+				choices.RemoveAt(pos);
+				PlayChoice(choices);
 			}
-
-
-			var list = from path in filepaths
-				   where IsMediaFile(path)
-				   select path;
-
-			var enumerable = list as string[] ?? list.ToArray();
-			var pos = Rand.Next(enumerable.Count());
-			var item = enumerable.ElementAt(pos);
-
 			Process.Start(item);
+		}
+
+		static bool ShouldPlay(string mediaItem)
+		{
+			var playMedia = MessageBox.Show("Play " + Path.GetFileName(mediaItem), "", MessageBoxButton.OKCancel);
+			return playMedia == MessageBoxResult.OK;
 		}
 
 		static bool IsMediaFile(string path)
 		{
 			var extension = Path.GetExtension(path);
 			return extension != null && -1 != Array.IndexOf(MediaExtensions, extension.ToUpperInvariant());
+		}
+
+		static IEnumerable<string> GetFiles(string path)
+		{
+			var queue = new Queue<string>();
+			queue.Enqueue(path);
+			while (queue.Count > 0)
+			{
+				path = queue.Dequeue();
+				try
+				{
+					foreach (var subDir in Directory.GetDirectories(path))
+						queue.Enqueue(subDir);
+				}
+				catch (Exception ex)
+				{
+					Console.Error.WriteLine(ex);
+				}
+				string[] files = null;
+				try
+				{
+					files = Directory.GetFiles(path);
+				}
+				catch (Exception ex)
+				{
+					Console.Error.WriteLine(ex);
+				}
+				if (files != null)
+					foreach (var t in files)
+						yield return t;
+			}
 		}
 	}
 }
